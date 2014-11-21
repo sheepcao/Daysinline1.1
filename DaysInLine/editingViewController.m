@@ -10,8 +10,7 @@
 #import "remindViewController.h"
 #import "globalVars.h"
 
-//#import "JSONKit.h"
-//#import <Frontia/Frontia.h>
+
 @interface editingViewController (){
     NSMutableArray *selected;
     NSMutableArray *tagLabels;
@@ -144,7 +143,7 @@ SystemSoundID soundObject;
     //self.toLabel.font = [UIFont systemFontOfSize:16.0];
     self.titleLabel.font = [UIFont systemFontOfSize:16.0];
     
-    int mainText_Height = 180;
+    int mainText_Height = 150;
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7) {
         //NSLog(@"ios7!!!!");
         mainText_Height += 20;
@@ -159,12 +158,24 @@ SystemSoundID soundObject;
     
     self.mainText = [[UITextView alloc] initWithFrame:CGRectMake(40, 155, 220, mainText_Height)];
     
+    //录音按钮
+    self.recorder = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x-55, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
+    self.recorder.backgroundColor = [UIColor yellowColor];
+    
+    self.player = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x+30, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
+    self.player.backgroundColor = [UIColor yellowColor];
+
+    
+ 
+    
 //    self.mainText.backgroundColor = [UIColor yellowColor];
     
     self.mainTextExtend = [[UILabel alloc] initWithFrame:CGRectMake(260, 155, 23, mainText_Height)];
     self.mainTextExtend.backgroundColor = [UIColor whiteColor];
     [self.view addSubview:self.mainTextExtend];
     [self.view addSubview:self.mainText];
+    [self.view addSubview:self.player];
+    [self.view addSubview:self.recorder];
     self.mainText.tag = 106;
     [self.setTextDelegate setMainText:self.mainText];
     self.mainText.delegate = self;
@@ -1078,13 +1089,7 @@ SystemSoundID soundObject;
         AudioServicesPlaySystemSound(soundObject_time);
     }
     
-//    NSString *title = UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation) ? @"\n\n\n\n\n\n\n\n\n" : @"\n\n\n\n\n\n\n\n\n\n\n" ;
-    
- 
-    
-//	UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:title delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:NSLocalizedString(@"确定",nil), NSLocalizedString(@"取消",nil), nil];
-//    actionSheet.tag = 1;
-//	[actionSheet showInView:self.view];
+
     
 	UIDatePicker *datePicker = [[UIDatePicker alloc] init] ;
 
@@ -1136,6 +1141,10 @@ SystemSoundID soundObject;
     [UIView commitAnimations];
     /*--------------------------------------------------------------*/
 
+    [self.startTimeButton setEnabled:NO];
+    [self.endTimeButton setEnabled:NO];
+
+
 
 }
 
@@ -1174,6 +1183,11 @@ SystemSoundID soundObject;
     for (UIView *subs in [timeSelectView subviews]) {
         [subs removeFromSuperview];
     }
+    
+    [self.startTimeButton setEnabled:YES];
+    [self.endTimeButton setEnabled:YES];
+
+
 }
 
 
@@ -1276,7 +1290,10 @@ SystemSoundID soundObject;
     [UIView commitAnimations];
     /*--------------------------------------------------------------*/
 
-    
+    [self.endTimeButton setEnabled:NO];
+    [self.startTimeButton setEnabled:NO];
+
+
 }
 
 -(void)addCollectTapped

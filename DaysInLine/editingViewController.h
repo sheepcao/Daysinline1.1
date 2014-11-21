@@ -86,6 +86,12 @@
 
 @property NSMutableArray *HasEvtDates;
 
+//录音
+@property (strong, nonatomic) UIButton *recorder;
+@property (strong, nonatomic) UIButton *player;
+
+
+
 
 //统计时长
 
