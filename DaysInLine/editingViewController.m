@@ -29,7 +29,7 @@
 @synthesize timeSelectView;
 
 
-
+bool didRecord; //for control record and play
 bool flag;
 NSString *oldRemindDate;
 bool firstInmoney;
@@ -45,24 +45,17 @@ SystemSoundID soundObject;
           }
     return self;
 }
-/*- (void) viewDidLayoutSubviews {
-    // only works for iOS 7+
-    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0) {
-        CGRect viewBounds = self.view.bounds;
-       // CGFloat topBarOffset = self.topLayoutGuide.length;
-        
-        // snaps the view under the status bar (iOS 6 style)
-        viewBounds.origin.y = 10;
-        
-        // shrink the bounds of your view to compensate for the offset
-        viewBounds.size.height = viewBounds.size.height -10;
-        self.view.bounds = viewBounds;
-    }
-}
- */
+
 - (void)viewDidLoad
 {
     
+    NSString *docsDir;
+    NSArray *dirPaths;
+    
+    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    docsDir = [dirPaths objectAtIndex:0];
+    
+    self.databasePath = [[NSString alloc] initWithString:[docsDir stringByAppendingPathComponent:@"info.sqlite"]];
     
     
     if ([self respondsToSelector:@selector(edgesForExtendedLayout)]){
@@ -94,8 +87,15 @@ SystemSoundID soundObject;
     //self.incomeFinal=0.0f;
     haveSaved = NO;
     firstInmoney = NO;
+    
+    //eric:for setup recorder with event id.
+    didRecord = NO;
     if (modifying == 0) {
         self.remindData = @"";
+        [self setupRecorder:[self searchEventID]];
+    }else
+    {
+        [self setupRecorder:modifyEventId];
     }
     //self.remindData = nil;
     //NSLog(@"<<<<<%@>>>>>",self.remindData);
@@ -109,13 +109,6 @@ SystemSoundID soundObject;
     
     self.selectedTags = [[NSMutableString alloc] init];
 
-    NSString *docsDir;
-    NSArray *dirPaths;
-    
-    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    docsDir = [dirPaths objectAtIndex:0];
-    
-    databasePath = [[NSString alloc] initWithString:[docsDir stringByAppendingPathComponent:@"info.sqlite"]];
 
     
     self.startTimeButton =(UIButton *)[self.view viewWithTag:101];
@@ -143,7 +136,7 @@ SystemSoundID soundObject;
     //self.toLabel.font = [UIFont systemFontOfSize:16.0];
     self.titleLabel.font = [UIFont systemFontOfSize:16.0];
     
-    int mainText_Height = 150;
+    int mainText_Height = mainHeight;
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7) {
         //NSLog(@"ios7!!!!");
         mainText_Height += 20;
@@ -159,23 +152,22 @@ SystemSoundID soundObject;
     self.mainText = [[UITextView alloc] initWithFrame:CGRectMake(40, 155, 220, mainText_Height)];
     
     //录音按钮
-    self.recorder = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x-55, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
-    self.recorder.backgroundColor = [UIColor yellowColor];
+    self.recorderBtn = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x-55, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
+    [self.recorderBtn setImage:[UIImage imageNamed:@"record"] forState:UIControlStateNormal];
     
-    self.player = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x+30, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
-    self.player.backgroundColor = [UIColor yellowColor];
+    self.playerBtn = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x+30, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
+    [self.playerBtn setImage:[UIImage imageNamed:@"play"] forState:UIControlStateNormal];
 
-    
- 
-    
-//    self.mainText.backgroundColor = [UIColor yellowColor];
+    [self.recorderBtn addTarget:self action:@selector(recordSound) forControlEvents:UIControlEventTouchUpInside];
+    [self.playerBtn addTarget:self action:@selector(playRecord) forControlEvents:UIControlEventTouchUpInside];
+
     
     self.mainTextExtend = [[UILabel alloc] initWithFrame:CGRectMake(260, 155, 23, mainText_Height)];
     self.mainTextExtend.backgroundColor = [UIColor whiteColor];
     [self.view addSubview:self.mainTextExtend];
     [self.view addSubview:self.mainText];
-    [self.view addSubview:self.player];
-    [self.view addSubview:self.recorder];
+    [self.view addSubview:self.playerBtn];
+    [self.view addSubview:self.recorderBtn];
     self.mainText.tag = 106;
     [self.setTextDelegate setMainText:self.mainText];
     self.mainText.delegate = self;
@@ -188,16 +180,7 @@ SystemSoundID soundObject;
         self.mainText.textColor = [UIColor blackColor];
    
     }
-    // self.mainText =[[UITextView alloc] initWithFrame: CGRectMake(50, 260, 200, 200)];
-    
-    
-    //self.imageView = [[NSMutableArray alloc] initWithCapacity:NR_IMAGEVIEW];
-    
-    //self.imageViewButton = [[NSMutableArray alloc] initWithCapacity:NR_IMAGEVIEW];
-  /*  for (int i = 0; i < NR_IMAGEVIEW; i++) {
-        self.imageViewButton[i] = (UIImageView *) [self.view viewWithTag:IMAGEVIEW_TAG_BASE+i];
-    }
-   */
+
     self.imageViewButton = [[NSMutableArray alloc] initWithCapacity:NR_IMAGEVIEW];
     for (int j = 0; j<NR_IMAGEVIEW; j++) {
         int x = 15+60*j;
@@ -308,9 +291,19 @@ SystemSoundID soundObject;
     static int times = 0;
     times++;
     
+    [[NSNotificationCenter defaultCenter] addObserver:self selector: @selector(keyboardWillShow) name:UIKeyboardWillShowNotification object:nil];
+    
     //  NSString* cName = [NSString stringWithFormat:@"%@",  self.navigationItem.title, nil];
     //  NSLog(@"current appear tab title %@", cName);
     //[[Frontia getStatistics] pageviewStartWithName:@"editView"];
+}
+
+-(void)keyboardWillShow
+{
+   if (self.timeSelectView.frame.origin.y < [UIScreen mainScreen].bounds.size.height)
+   {
+       [self cancelTime];
+   }
 }
 
 -(void) viewDidDisappear:(BOOL)animated
@@ -318,6 +311,39 @@ SystemSoundID soundObject;
     // NSString* cName = [NSString stringWithFormat:@"%@", self.navigationItem.title, nil];
     // NSLog(@"current disappear tab title %@", cName);
     //[[Frontia getStatistics] pageviewEndWithName:@"editView"];
+}
+
+#pragma mark select eventID for rerocd
+-(int)searchEventID
+{
+    int maxID = 0;
+    
+    sqlite3_stmt *statement;
+    const char *dbpath = [self.databasePath UTF8String];
+    if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
+        NSString *queryEvent = [NSString stringWithFormat:@"SELECT max(eventID) from EVENT"];
+        
+        const char *queryEventstatment = [queryEvent UTF8String];
+        if (sqlite3_prepare_v2(dataBase, queryEventstatment, -1, &statement, NULL)==SQLITE_OK) {
+            if (sqlite3_step(statement)==SQLITE_ROW) {
+                //找到要修改的事件，取出数据。
+           
+                maxID = sqlite3_column_int(statement, 0);
+                
+            }
+            
+        }else
+            NSLog(@"Error while max:%s",sqlite3_errmsg(dataBase));
+            
+        sqlite3_finalize(statement);
+    }
+    else {
+        //NSLog(@"数据库打开失败");
+        
+    }
+    sqlite3_close(dataBase);
+    
+    return maxID+1;
 }
 
 
@@ -427,13 +453,7 @@ SystemSoundID soundObject;
      
     
     [alert show];
-    
-    /*
-    CustomIOS7AlertView *alertAd = [[CustomIOS7AlertView alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height-100, self.view.frame.size.width, 100)];
-    [alertAd setButtonTitles:[NSMutableArray arrayWithObjects:nil]];
-    [alertAd setContainerView:self.adView];
-    [alertAd show];
-     */
+
     
     
 
@@ -512,11 +532,6 @@ SystemSoundID soundObject;
     
     [beSelected removeAllObjects];
     
-    //[[Frontia getStatistics] logEvent:@"10025" eventLabel:@"tagOK"];
-
-    
-    //[self.mainText setFrame:CGRectMake(55, 240, 200, 200)];
-    //NSLog(@"width is :%.2f",self.mainText.frame.size.width);
     NSMutableString *choices = [[NSMutableString alloc] init];
     //NSLog(@"count is %lu",(unsigned long)tagLabels.count);
     for (int i = 0 ; i< tagLabels.count ; i++) {
@@ -553,8 +568,6 @@ SystemSoundID soundObject;
             
         }
         
-        NSLog(@"tag num is:%d",tagLabels.count);
-
         self.selectedTags = [choices substringToIndex:(choices.length-1)];
         //NSLog(@"OK   tapped---->:%@",self.selectedTags);
 
@@ -643,41 +656,6 @@ SystemSoundID soundObject;
     [self presentViewController:my_remind animated:YES completion:Nil ];
     
 }
-
-/*
-//tag=3的actionsheet
--(void)remindTapped
-{
-    NSString *title = UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation) ? @"\n\n\n\n\n\n\n\n\n" : @"\n\n\n\n\n\n\n\n\n\n\n" ;
-    UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:title delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:@"确定", nil];
-    actionSheet.tag = 3;
-    UIView *view1 = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.view.frame.size.width, self.view.frame.size.height/2-15)];
-    view1.backgroundColor = [UIColor clearColor];
- 
-    
-    UISegmentedControl* segmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"按日期提醒", @"按间隔提醒"]];
-    segmentedControl.frame = CGRectMake(self.view.frame.size.width/6, 20, 2*(self.view.frame.size.width/3), 35);
-    
-    segmentedControl.selectedSegmentIndex= 0;
-    segmentedControl.backgroundColor = [UIColor clearColor];
-    
-    [segmentedControl addTarget:self action:@selector(valueChanged:) forControlEvents:UIControlEventValueChanged];
-  
-    
-    UIDatePicker *remindDatePicker = [[UIDatePicker alloc] init] ;
-    
-    remindDatePicker.datePickerMode = UIDatePickerModeDate;
-    remindDatePicker.frame = CGRectMake(0, 0, self.view.frame.size.width, 40);
-    remindDatePicker.center = CGPointMake(self.view.frame.size.width/2, self.view.frame.size.height/4);
-    
-    
-	[actionSheet showInView:self.view];
-    [actionSheet addSubview:remindDatePicker];
-    [actionSheet addSubview:segmentedControl];
-    
-}
-*/
-
 -(void) photoTapped
 {
      //[[Frontia getStatistics] logEvent:@"10010" eventLabel:@"takePic"];
@@ -888,7 +866,6 @@ SystemSoundID soundObject;
     //NSLog(@"移除图片");
     [self.checkAlert close];
    
-      NSLog(@"1num:%d,content:%@",self.imageViewButton.count,self.imageViewButton[0]);
     
    
     NSMutableArray *imageNames = [NSMutableArray arrayWithArray:[self.imageName componentsSeparatedByString:@";"]];
@@ -920,9 +897,9 @@ SystemSoundID soundObject;
     
 
     
-    NSLog(@"2num:%d,content:%@",self.imageViewButton.count,self.imageViewButton[0]);
+
     
-    for (int j = sender.tag-IMAGEVIEW_TAG_BASE; j<NR_IMAGEVIEW-1; j++) {
+    for (int j = ((int)sender.tag)-IMAGEVIEW_TAG_BASE; j<NR_IMAGEVIEW-1; j++) {
         int x = 15+60*j;
         
         UIButton *moveButton = self.imageViewButton[j];
@@ -931,13 +908,13 @@ SystemSoundID soundObject;
         [(UIButton *)self.imageViewButton[j] setTag:IMAGEVIEW_TAG_BASE+j];
         
     }
-        NSLog(@"3num:%d,content:%@",self.imageViewButton.count,self.imageViewButton[0]);
+
     
         self.imageViewButton[4] = [[UIButton alloc] initWithFrame:CGRectMake(15+60*4, y, width, height)];
         
         [(UIButton *)[self.imageViewButton objectAtIndex:4] setTag:IMAGEVIEW_TAG_BASE+4];
         [self.view addSubview:self.imageViewButton[4]];
-    NSLog(@"4num:%d,content:%@",self.imageViewButton.count,self.imageViewButton[0]);
+ 
 
 
     [imageNames removeObjectAtIndex:(sender.tag-IMAGEVIEW_TAG_BASE)];
@@ -1020,7 +997,7 @@ SystemSoundID soundObject;
     
     if ((modifying == 1)&&(!firstInmoney)){
         sqlite3_stmt *statement;
-        const char *dbpath = [databasePath UTF8String];
+        const char *dbpath = [self.databasePath UTF8String];
         if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
             NSString *queryEvent = [NSString stringWithFormat:@"SELECT income,expend from event where eventID=\"%d\"",modifyEventId];
             const char *queryEventstatment = [queryEvent UTF8String];
@@ -1076,7 +1053,11 @@ SystemSoundID soundObject;
 //tag＝1的actionsheet
 -(void)startTimeTapped
 {
-     //[[Frontia getStatistics] logEvent:@"10022" eventLabel:@"startTimeTap"];
+
+    [self dismissKeyboard];
+
+    
+    
     
     if (soundSwitch) {
         
@@ -1227,8 +1208,9 @@ SystemSoundID soundObject;
 //tag＝2的actionsheet
 -(void)endTimeTapped
 {
-     //[[Frontia getStatistics] logEvent:@"10023" eventLabel:@"endTimeTap"];
-    
+
+    [self dismissKeyboard];
+
     if (soundSwitch) {
         
         CFBundleRef mainbundle=CFBundleGetMainBundle();
@@ -1320,7 +1302,7 @@ SystemSoundID soundObject;
     // modifying＝1时候，先查询收藏表中是否已经存在，若有，提示存在，若无，添加只收藏并提示成功。
     if (modifying == 1)
     {
-        const char *dbpath = [databasePath UTF8String];
+        const char *dbpath = [self.databasePath UTF8String];
         sqlite3_stmt *stmtIfcollect = nil;
         sqlite3_stmt *stmtInsertCollect = nil;
         
@@ -1476,7 +1458,7 @@ SystemSoundID soundObject;
                     
                     //在数据库中存储该事件
                     
-                    const char *dbpath = [databasePath UTF8String];
+                    const char *dbpath = [self.databasePath UTF8String];
                     sqlite3_stmt *statementInsert;
                     sqlite3_stmt *statementSelect;
                     sqlite3_stmt *statementCollect;
@@ -1579,7 +1561,7 @@ SystemSoundID soundObject;
                                                   otherButtonTitles:nil];
             
             [ alert  show];
-            const char *dbpath = [databasePath UTF8String];
+            const char *dbpath = [self.databasePath UTF8String];
             
             
             if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -1692,7 +1674,7 @@ SystemSoundID soundObject;
     
     if (modifying == 1) {
         sqlite3_stmt *statement;
-        const char *dbpath = [databasePath UTF8String];
+        const char *dbpath = [self.databasePath UTF8String];
         if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
             //NSLog(@"before select event ID");
             NSString *queryEvent = [NSString stringWithFormat:@"SELECT startTime,endTime from event where eventID=\"%d\"",modifyEventId];
@@ -1805,7 +1787,7 @@ SystemSoundID soundObject;
                 
                 //未能成功保存，所选时间内有其他事件冲突。所以先恢复当前修改中事件的占位，防止占位清零后点击返回，造成Area错误释放。
                 sqlite3_stmt *statement;
-                const char *dbpath = [databasePath UTF8String];
+                const char *dbpath = [self.databasePath UTF8String];
                 if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
                     //NSLog(@"before select event ID");
                     NSString *queryEvent = [NSString stringWithFormat:@"SELECT startTime,endTime from event where eventID=\"%d\"",modifyEventId];
@@ -1876,7 +1858,7 @@ SystemSoundID soundObject;
                     
                     //在数据库中存储该事件
                    
-                    const char *dbpath = [databasePath UTF8String];
+                    const char *dbpath = [self.databasePath UTF8String];
                     sqlite3_stmt *statement;
                     
                     if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -1924,7 +1906,7 @@ SystemSoundID soundObject;
                 }
                 else{
                     
-                    const char *dbpath = [databasePath UTF8String];
+                    const char *dbpath = [self.databasePath UTF8String];
                     sqlite3_stmt *statement;
                     
                     if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -2106,7 +2088,7 @@ SystemSoundID soundObject;
     if (modifying == 0) {
         
         
-        const char *dbpath = [databasePath UTF8String];
+        const char *dbpath = [self.databasePath UTF8String];
         
         
         if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -2427,7 +2409,7 @@ SystemSoundID soundObject;
             
             if (![tf.text isEqualToString:@""]) {
                 //NSLog(@"new tag is : %@",tf.text);
-                const char *dbpath = [databasePath UTF8String];
+                const char *dbpath = [self.databasePath UTF8String];
                 sqlite3_stmt *statement;
                 
                 if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -2487,7 +2469,7 @@ SystemSoundID soundObject;
             
             if(modifying == 1){
                 
-                const char *dbpath = [databasePath UTF8String];
+                const char *dbpath = [self.databasePath UTF8String];
                 sqlite3_stmt *statement;
                 sqlite3_stmt *statement_1;
                 sqlite3_stmt *statement_2;
@@ -2637,7 +2619,7 @@ SystemSoundID soundObject;
         self.selectedTags = oldTags;
         
         NSArray *tagToDraw = [oldTags componentsSeparatedByString:@","];
-        NSLog(@"tagToDraw.count = %d",tagToDraw.count );
+
         if (tagToDraw.count > 0) {
             for (int i = 0; i < tagToDraw.count; i++) {
                 UILabel *tag = [[UILabel alloc] initWithFrame:CGRectMake(260, 5+160+30*i, 60, 20)];
@@ -2721,8 +2703,7 @@ SystemSoundID soundObject;
         
     }
     
-    NSLog(@"selected:%d", selected.count);
-    NSLog(@"beselected:%d", beSelected.count);
+
     
     NSNumber *haveload = [[NSNumber alloc] initWithBool:YES];
     [loadCellOnce insertObject:haveload atIndex:indexPath.row];
@@ -2821,7 +2802,7 @@ SystemSoundID soundObject;
         [selected removeObject:[self.tags objectAtIndex:indexPath.row]];
         
         
-        const char *dbpath = [databasePath UTF8String];
+        const char *dbpath = [self.databasePath UTF8String];
         sqlite3_stmt *statement;
         
         if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
@@ -2877,7 +2858,7 @@ SystemSoundID soundObject;
    // self.mainText.contentInset=UIEdgeInsetsMake(0, 0,kbSize.height, 0);
 
     
-    int mainText_Height = 180;
+    int mainText_Height = mainHeight;
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7) {
         //NSLog(@"ios7!!!!");
         mainText_Height += 20;
@@ -2908,7 +2889,7 @@ SystemSoundID soundObject;
     
           NSLog(@"mainText frame3:%.2f",textView.frame.size.height);
     
-    int mainText_Height = 180;
+    int mainText_Height = mainHeight;
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7) {
         //NSLog(@"ios7!!!!");
         mainText_Height += 20;
@@ -3024,6 +3005,119 @@ SystemSoundID soundObject;
     }
     [textField resignFirstResponder];
     
+}
+
+
+
+#pragma recorder and player
+-(void)setupRecorder:(int)level
+{
+    NSFileManager *fileManager =[NSFileManager defaultManager];
+   
+    // Set the audio file
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    
+    NSString *voicePath =[[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"message%d.caf",level]];
+    
+    if([fileManager fileExistsAtPath:voicePath] == YES)
+    {
+        //find an voice already exist..
+         didRecord = YES;
+//        NSError *error;
+//       
+//        
+//        [fileManager removeItemAtPath:voicePath error:&error];
+//        NSLog(@"error:%@",[error description]);
+
+    }
+
+    
+    
+
+    NSURL *outputFileURL = [NSURL fileURLWithPath:voicePath];
+    
+    // Setup audio session
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    [session setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+    
+    // Define the recorder setting
+    NSMutableDictionary *recordSetting = [[NSMutableDictionary alloc] init];
+    
+    [recordSetting setValue:[NSNumber numberWithInt:kAudioFormatMPEG4AAC] forKey:AVFormatIDKey];
+    [recordSetting setValue:[NSNumber numberWithFloat:44100.0] forKey:AVSampleRateKey];
+    [recordSetting setValue:[NSNumber numberWithInt: 2] forKey:AVNumberOfChannelsKey];
+    
+    // Initiate and prepare the recorder
+    self.recorder = [[AVAudioRecorder alloc] initWithURL:outputFileURL settings:recordSetting error:NULL];
+    self.recorder.delegate = self;
+    self.recorder.meteringEnabled = YES;
+}
+
+-(void)recordSound
+{
+    NSFileManager *fileManager =[NSFileManager defaultManager];
+
+    if (![self.recorder isRecording]) {
+        
+        if([fileManager fileExistsAtPath:[self.recorder.url absoluteString]] == YES)
+        {
+            //find an voice already exist..
+            NSError *error;
+            [fileManager removeItemAtPath:[self.recorder.url absoluteString] error:&error];
+            NSLog(@"error:%@",[error description]);
+            
+        }
+        
+        AVAudioSession *session = [AVAudioSession sharedInstance];
+        [session setActive:YES error:nil];
+        
+        [self.recorder record];
+        didRecord =YES;
+        [self.recorderBtn setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
+        [self.playerBtn setEnabled:NO];
+        
+        
+    } else {
+        
+        [self.recorder stop];
+        [self.recorderBtn setImage:[UIImage imageNamed:@"record"] forState:UIControlStateNormal];
+        [self.playerBtn setEnabled:YES];
+        
+    }
+    
+    
+}
+
+-(void)playRecord
+{
+
+    self.player = [[AVAudioPlayer alloc] initWithContentsOfURL:self.recorder.url error:nil];
+    NSLog(@"URL1:%@",self.recorder.url);
+    
+    [self.recorderBtn setEnabled:NO];
+    [self.player setDelegate:self];
+    self.player.volume = 1;
+    [self.player prepareToPlay];
+    
+    [self.player play];
+    double duration = self.player.duration;
+    
+    [self performSelector:@selector(playOver) withObject:nil afterDelay:duration];
+    
+    
+
+}
+-(void)playOver
+{
+    [self.recorderBtn setEnabled:YES];
+    
+}
+
+#pragma mark - recorder delegate
+//add new message to home page
+- (void) audioRecorderDidFinishRecording:(AVAudioRecorder *)avrecorder successfully:(BOOL)flag{
+    [self.playerBtn setEnabled:YES];
+
 }
 
 

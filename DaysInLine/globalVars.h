@@ -26,6 +26,7 @@ BOOL remindSwitch;
 
 #define NR_IMAGEVIEW 5
 #define IMAGEVIEW_TAG_BASE 200
+#define mainHeight 150
 //#define IMAGEBUTTON_TAG_BASE 300
 
 #endif

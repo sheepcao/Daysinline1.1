@@ -7,6 +7,8 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <AVFoundation/AVFoundation.h>
+
 #import <AudioToolbox/AudioToolbox.h>
 #import "sqlite3.h"
 #import "redrawButtonDelegate.h"
@@ -30,9 +32,11 @@
     UITableViewDataSource,
     UIActionSheetDelegate,
     UIImagePickerControllerDelegate,
-    UINavigationControllerDelegate> {
+    UINavigationControllerDelegate,
+    AVAudioRecorderDelegate,
+    AVAudioPlayerDelegate> {
     sqlite3 *dataBase;
-    NSString *databasePath;
+    
     NSNumber *startTimeNum;
     NSNumber *endTimeNum;
     
@@ -67,13 +71,15 @@
 @property (weak, nonatomic) UILabel *titleLabel;
 @property (strong, nonatomic) UIView *timeSelectView;
 
+@property (strong, nonatomic)NSString *databasePath;
+
 //@property (strong, nonatomic) IBOutlet NSMutableArray *imageView;
 @property (strong, nonatomic) IBOutlet NSMutableArray *imageViewButton;
 @property (strong, nonatomic) CustomIOS7AlertView *moneyAlert;
 @property (strong, nonatomic) CustomIOS7AlertView *tagAlert;
 @property (strong, nonatomic) CustomIOS7AlertView *checkAlert;
 @property (weak, nonatomic)  UITableView *tagTable;
-@property (strong, nonatomic)  IBOutlet UITextView *mainText;
+@property (strong, nonatomic)   UITextView *mainText;
 @property (strong, nonatomic)   UILabel *mainTextExtend;
 @property (weak, nonatomic) IBOutlet UITextField *theme;
 @property (weak, nonatomic) IBOutlet NSNumber *eventType;
@@ -87,8 +93,10 @@
 @property NSMutableArray *HasEvtDates;
 
 //录音
-@property (strong, nonatomic) UIButton *recorder;
-@property (strong, nonatomic) UIButton *player;
+@property (strong, nonatomic) UIButton *recorderBtn;
+@property (strong, nonatomic) UIButton *playerBtn;
+@property (strong, nonatomic) AVAudioRecorder *recorder;
+@property (strong, nonatomic) AVAudioPlayer *player;
 
 
 
