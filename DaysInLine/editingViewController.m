@@ -1480,7 +1480,7 @@ int recorderID;
                     if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
                         
                         // 插入当天的数据
-                        NSString *insertSql = [NSString stringWithFormat:@"INSERT INTO EVENT(TYPE,TITLE,mainText,income,expend,date,startTime,endTime,distance,label,remind,startArea,photoDir) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"];
+                        NSString *insertSql = [NSString stringWithFormat:@"INSERT INTO EVENT(TYPE,TITLE,mainText,income,expend,date,startTime,endTime,distance,label,remind,startArea,photoDir,eventID) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"];
                         
                         const char *insertsatement = [insertSql UTF8String];
                         sqlite3_prepare_v2(dataBase, insertsatement, -1, &statementInsert, NULL);
@@ -1502,6 +1502,8 @@ int recorderID;
                         //  sqlite3_bind_int(statement,11, 0);
                         sqlite3_bind_int(statementInsert,12, [self.eventType intValue]*1000+[startTimeNum intValue]/15);
                         sqlite3_bind_text(statementInsert,13, [self.imageName UTF8String], -1, SQLITE_TRANSIENT);
+                        
+                        sqlite3_bind_int(statementInsert,14, [self searchEventID]);
                         
                         if (sqlite3_step(statementInsert)==SQLITE_DONE) {
                         }
@@ -1877,7 +1879,7 @@ int recorderID;
                     if (sqlite3_open(dbpath, &dataBase)==SQLITE_OK) {
                         
                         // 插入当天的数据
-                        NSString *insertSql = [NSString stringWithFormat:@"INSERT INTO EVENT(TYPE,TITLE,mainText,income,expend,date,startTime,endTime,distance,label,remind,startArea,photoDir) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"];
+                        NSString *insertSql = [NSString stringWithFormat:@"INSERT INTO EVENT(TYPE,TITLE,mainText,income,expend,date,startTime,endTime,distance,label,remind,startArea,photoDir,eventID) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"];
                         
                         const char *insertsatement = [insertSql UTF8String];
                         sqlite3_prepare_v2(dataBase, insertsatement, -1, &statement, NULL);
@@ -1899,6 +1901,7 @@ int recorderID;
                         //  sqlite3_bind_int(statement,11, 0);
                         sqlite3_bind_int(statement,12, [self.eventType intValue]*1000+[startTimeNum intValue]/15);
                         sqlite3_bind_text(statement,13, [self.imageName UTF8String], -1, SQLITE_TRANSIENT);
+                        sqlite3_bind_int(statement,14, [self searchEventID]);
                         
                             if (sqlite3_step(statement)==SQLITE_DONE) {
                             //NSLog(@"innsert event okqqqqqq");
@@ -2595,8 +2598,10 @@ int recorderID;
     if (alertView.tag == 5) {
         if (buttonIndex == 1) {
             
-            [self deleteRecorderVoice];
-
+            if (modifying == 0)
+            {
+                [self deleteRecorderVoice];
+            }
             [self dismissViewControllerAnimated:YES completion:nil];
         }
     }

@@ -25,4 +25,7 @@
 @property (strong,nonatomic) UIButton *goInThatDay;
 @property (strong,nonatomic) UIButton *returnToTags;
 
+
+
+-(void)dismissKeyboard ;
 @end

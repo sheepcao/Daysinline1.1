@@ -257,7 +257,7 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
         /*           NSString *createsql = @"CREATE TABLE IF NOT EXISTS DAYTABLE (ID INTEGER PRIMARY KEY AUTOINCREMENT,DATE TEXT UNIQUE,MOOD INTEGER,GROWTH INTEGER)";
          */
         NSString *createDayable = @"CREATE TABLE IF NOT EXISTS DAYTABLE (DATE TEXT PRIMARY KEY,MOOD INTEGER,GROWTH INTEGER)";
-        NSString *createEvent = @"CREATE TABLE IF NOT EXISTS EVENT (eventID INTEGER PRIMARY KEY AUTOINCREMENT,TYPE INTEGER,TITLE TEXT,mainText TEXT,income REAL,expend REAL,date TEXT,startTime REAL,endTime REAL,distance TEXT,label TEXT,remind TEXT,startArea INTEGER,photoDir TEXT)";
+        NSString *createEvent = @"CREATE TABLE IF NOT EXISTS EVENT (eventID INTEGER PRIMARY KEY,TYPE INTEGER,TITLE TEXT,mainText TEXT,income REAL,expend REAL,date TEXT,startTime REAL,endTime REAL,distance TEXT,label TEXT,remind TEXT,startArea INTEGER,photoDir TEXT)";
         //      NSString *createRemind = @"CREATE TABLE IF NOT EXISTS REMIND (remindID INTEGER PRIMARY KEY AUTOINCREMENT,eventID INTEGER,date TEXT,fromToday TEXT,time TEXT)";
         NSString *createTag = @"CREATE TABLE IF NOT EXISTS TAG (tagID INTEGER PRIMARY KEY AUTOINCREMENT,tagName TEXT UNIQUE)";
         
@@ -555,9 +555,16 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
 {
     //[[Frontia getStatistics] logEvent:@"10015" eventLabel:@"todayTap"];
 
+    [self.my_select dismissKeyboard];
+    
+    
+    
     
     //play sound
      //播放
+    
+    
+    
     if (soundSwitch) {
         
     
@@ -1177,10 +1184,12 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
     my_editingViewController.tags = self.allTags;
     my_editingViewController.HasEvtDates = self.HasEventsDates;
     
+    modifying = 0;
+    
     [(UILabel*)[my_editingViewController.view viewWithTag:103] setText:startTime];
     [(UILabel*)[my_editingViewController.view viewWithTag:104] setText:endTime];
 
-    modifying = 0;
+    
     
     my_editingViewController.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
     [self presentViewController:my_editingViewController animated:YES completion:Nil ];
@@ -1456,7 +1465,11 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
 }
 
 -(void)treasureTapped
+
 {
+    
+    [self.my_select dismissKeyboard];
+
     NSUserDefaults *defaults = [ NSUserDefaults standardUserDefaults ];
     
     NSArray *languages = [defaults objectForKey : @"AppleLanguages" ];
@@ -1674,7 +1687,8 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
 
 -(void)analyseTapped
 {
-    
+    [self.my_select dismissKeyboard];
+
     //[[Frontia getStatistics] logEvent:@"10018" eventLabel:@"statisticTap"];
 
     inwhichButton = 4;
@@ -1781,7 +1795,8 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
 
 -(void)settingTapped
 {
-    
+    [self.my_select dismissKeyboard];
+
     //[[Frontia getStatistics] logEvent:@"10019" eventLabel:@"settingTap"];
 
     
@@ -2395,7 +2410,9 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
     my_modifyViewController.tags = self.allTags;
     my_modifyViewController.HasEvtDates = self.HasEventsDates;
     
-        
+    modifyEventId = [evtID_mdfy intValue];
+    NSLog(@"eventID is : %d",modifyEventId);
+  
     //将该事件还原现使出来
     my_modifyViewController.eventType = evtType_mdfy;
     [(UITextField*)[my_modifyViewController.view viewWithTag:105] setText:title_mdfy] ;
@@ -2443,8 +2460,6 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
     }
     
  //   [(UITextField*)[my_modifyViewController.moneyAlert viewWithTag:501] setText:[NSString stringWithFormat:@"%.2f",[income_mdfy floatValue]]];
-    modifyEventId = [evtID_mdfy intValue];
-    NSLog(@"eventID is : %d",modifyEventId);
    // NSLog(@"income is &&&&&&: %@",[NSString stringWithFormat:@"%.2f",[income_mdfy floatValue]]);
     
     
@@ -3082,7 +3097,8 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
             my_selectEvent.tags = self.allTags;
             my_selectEvent.HasEvtDates = self.HasEventsDates;
             
-                        
+            modifyEventId = [evtID_mdfy intValue];
+         
             
             //将该事件还原现使出来
             my_selectEvent.eventType = evtType_mdfy;
@@ -3130,7 +3146,6 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
             }
 
             
-            modifyEventId = [evtID_mdfy intValue];
             my_selectEvent.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
             [self presentViewController:my_selectEvent animated:YES completion:Nil ];
             
@@ -3291,7 +3306,8 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
             
             
             
-            
+            modifyEventId = [evtID_mdfy intValue];
+
             
             
             //将该事件还原现使出来
@@ -3338,7 +3354,6 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
                 [my_collectEvent.remindButton setImage:[UIImage imageNamed: @"remindBtn.png"] forState:UIControlStateNormal];
                 
             }
-            modifyEventId = [evtID_mdfy intValue];
             my_collectEvent.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
             [self presentViewController:my_collectEvent animated:YES completion:Nil ];
      
@@ -3490,7 +3505,8 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
             my_selectEvent.HasEvtDates = self.HasEventsDates;
             
             
-            
+            modifyEventId = [evtID_mdfy intValue];
+
             //将该事件还原现使出来
             my_selectEvent.eventType = evtType_mdfy;
             [(UITextField*)[my_selectEvent.view viewWithTag:105] setText:title_mdfy] ;
@@ -3536,7 +3552,6 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
                 
             }
 
-            modifyEventId = [evtID_mdfy intValue];
             my_selectEvent.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
             [self presentViewController:my_selectEvent animated:YES completion:Nil ];
             
@@ -3739,7 +3754,6 @@ int inwhichButton;//0=mainView,1=today,2=select,3=collect,4=analyse,5=setting.
     }
     
 }
-
 
 
 
