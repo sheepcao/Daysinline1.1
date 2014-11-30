@@ -12,7 +12,7 @@
 #import <iAd/iAd.h>
 #import "GADBannerView.h"
 
-#define ADMOB_ID @"a1531ddc35a4db2"
+//#define ADMOB_ID @"a1531ddc35a4db2"
 
 @interface remindViewController : UIViewController <ADBannerViewDelegate,GADBannerViewDelegate>
 @property (weak, nonatomic) IBOutlet UISegmentedControl *remindMode;

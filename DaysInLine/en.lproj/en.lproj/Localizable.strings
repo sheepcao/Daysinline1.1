@@ -269,4 +269,9 @@
 /* No comment provided by engineer. */
 "音效" = "Sound";
 
+/* No comment provided by engineer. */
+"请谨慎操作" = "Be Cautious";
+
+/* No comment provided by engineer. */
+"重新录音将删除该事件的原有录音,确定继续?" = "This operation will delete the original recording of the event and make a new one.";
 

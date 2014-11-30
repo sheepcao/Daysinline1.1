@@ -9,9 +9,10 @@
 #import <UIKit/UIKit.h>
 
 #import <iAd/iAd.h>
+#import "globalVars.h"
 #import "GADBannerView.h"
 
-#define ADMOB_ID @"a1531ddc35a4db2"
+//#define ADMOB_ID @"a1531ddc35a4db2"
 
 
 @interface checkPhotoController : UIViewController <ADBannerViewDelegate,GADBannerViewDelegate>

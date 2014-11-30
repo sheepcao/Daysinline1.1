@@ -37,6 +37,8 @@ bool haveSaved;
 bool firstInTag;//判断打开标签后，某cell是否已选
 SystemSoundID soundObject;
 
+int recorderID;
+
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
@@ -87,16 +89,9 @@ SystemSoundID soundObject;
     //self.incomeFinal=0.0f;
     haveSaved = NO;
     firstInmoney = NO;
+    recorderID = 0;
     
-    //eric:for setup recorder with event id.
-    didRecord = NO;
-    if (modifying == 0) {
-        self.remindData = @"";
-        [self setupRecorder:[self searchEventID]];
-    }else
-    {
-        [self setupRecorder:modifyEventId];
-    }
+
     //self.remindData = nil;
     //NSLog(@"<<<<<%@>>>>>",self.remindData);
     tagLabels = [[NSMutableArray alloc] init];
@@ -150,6 +145,10 @@ SystemSoundID soundObject;
 
     
     self.mainText = [[UITextView alloc] initWithFrame:CGRectMake(40, 155, 220, mainText_Height)];
+    self.mainTextExtend = [[UILabel alloc] initWithFrame:CGRectMake(260, 155, 23, mainText_Height)];
+    self.mainTextExtend.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:self.mainTextExtend];
+    [self.view addSubview:self.mainText];
     
     //录音按钮
     self.recorderBtn = [[UIButton alloc] initWithFrame:CGRectMake(self.mainText.center.x-55, self.mainText.frame.origin.y + self.mainText.frame.size.height-25, 50, 50)];
@@ -162,12 +161,26 @@ SystemSoundID soundObject;
     [self.playerBtn addTarget:self action:@selector(playRecord) forControlEvents:UIControlEventTouchUpInside];
 
     
-    self.mainTextExtend = [[UILabel alloc] initWithFrame:CGRectMake(260, 155, 23, mainText_Height)];
-    self.mainTextExtend.backgroundColor = [UIColor whiteColor];
-    [self.view addSubview:self.mainTextExtend];
-    [self.view addSubview:self.mainText];
+
     [self.view addSubview:self.playerBtn];
     [self.view addSubview:self.recorderBtn];
+    
+    [self.recorderBtn setHidden:YES];
+    [self.playerBtn setHidden:YES];
+    
+    
+    //eric:for setup recorder with event id.
+    didRecord = NO;
+    if (modifying == 0) {
+        self.remindData = @"";
+        recorderID = [self searchEventID];
+    }else
+    {
+        recorderID = modifyEventId;
+    }
+    [self setupRecorder:recorderID];
+
+
     self.mainText.tag = 106;
     [self.setTextDelegate setMainText:self.mainText];
     self.mainText.delegate = self;
@@ -2565,6 +2578,8 @@ SystemSoundID soundObject;
                 }
                 sqlite3_close(dataBase);
                 //NSLog(@"事项删除完毕！！！！！！") ;
+                
+                [self deleteRecorderVoice];//eric: delete recording voice...
             }else{
                 UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"提示",nil)
                                                                 message:NSLocalizedString(@"该事件尚未保存，无须删除",nil)
@@ -2580,10 +2595,20 @@ SystemSoundID soundObject;
     if (alertView.tag == 5) {
         if (buttonIndex == 1) {
             
-            //[[Frontia getStatistics] logEvent:@"10014" eventLabel:@"returnWithoutSave"];
+            [self deleteRecorderVoice];
 
             [self dismissViewControllerAnimated:YES completion:nil];
         }
+    }
+    
+    if(alertView.tag == 10)//eirc: for recording alert.
+    {
+        if (buttonIndex == 1) {
+            [self deleteRecorderVoice];
+            
+            [self startRecording];
+        }
+        
     }
     
 }
@@ -3023,12 +3048,23 @@ SystemSoundID soundObject;
     {
         //find an voice already exist..
          didRecord = YES;
-//        NSError *error;
-//       
-//        
-//        [fileManager removeItemAtPath:voicePath error:&error];
-//        NSLog(@"error:%@",[error description]);
 
+        //set recorder and play button appearence
+        
+        [self.recorderBtn setHidden:NO];
+        [self.playerBtn setHidden:NO];
+
+    }else
+    {
+        CGRect recorderBtnFrame = self.recorderBtn.frame;
+        recorderBtnFrame.origin.x += 40;
+        [self.recorderBtn setFrame:recorderBtnFrame];
+        [self.recorderBtn setHidden:NO];
+        
+        CGRect playerBtnFrame = self.playerBtn.frame;
+        playerBtnFrame.origin.x += 180; //set out of the right bound.
+        [self.playerBtn setFrame:playerBtnFrame];
+        [self.playerBtn setHidden:YES];
     }
 
     
@@ -3051,45 +3087,81 @@ SystemSoundID soundObject;
     self.recorder = [[AVAudioRecorder alloc] initWithURL:outputFileURL settings:recordSetting error:NULL];
     self.recorder.delegate = self;
     self.recorder.meteringEnabled = YES;
+    
+
+    
+    
 }
 
 -(void)recordSound
 {
     NSFileManager *fileManager =[NSFileManager defaultManager];
-
+    
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *voicePath =[[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"message%d.caf",recorderID]];
+    
     if (![self.recorder isRecording]) {
         
-        if([fileManager fileExistsAtPath:[self.recorder.url absoluteString]] == YES)
+        if([fileManager fileExistsAtPath:voicePath] == YES)
         {
             //find an voice already exist..
-            NSError *error;
-            [fileManager removeItemAtPath:[self.recorder.url absoluteString] error:&error];
-            NSLog(@"error:%@",[error description]);
+            UIAlertView *recordExistAlert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"请谨慎操作",nil) message:NSLocalizedString(@"重新录音将删除该事件的原有录音,确定继续?",nil) delegate:self cancelButtonTitle:NSLocalizedString(@"取消",nil) otherButtonTitles:NSLocalizedString(@"确定",nil), nil];
+            recordExistAlert.tag = 10;
+            [recordExistAlert show];
             
+
+            
+        }else
+        {
+        
+            [self startRecording];
         }
-        
-        AVAudioSession *session = [AVAudioSession sharedInstance];
-        [session setActive:YES error:nil];
-        
-        [self.recorder record];
-        didRecord =YES;
-        [self.recorderBtn setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
-        [self.playerBtn setEnabled:NO];
-        
         
     } else {
         
         [self.recorder stop];
         [self.recorderBtn setImage:[UIImage imageNamed:@"record"] forState:UIControlStateNormal];
         [self.playerBtn setEnabled:YES];
+        if ([self.playerBtn isHidden]) {
+            [self.playerBtn setHidden:NO];
+            
+            [UIView beginAnimations:nil context:NULL];
+            [UIView setAnimationDuration:0.3f];
+            
+            CGRect recorderBtnFrame = self.recorderBtn.frame;
+            recorderBtnFrame.origin.x -= 40;
+            [self.recorderBtn setFrame:recorderBtnFrame];
+            [self.recorderBtn setHidden:NO];
+            
+            CGRect playerBtnFrame = self.playerBtn.frame;
+            playerBtnFrame.origin.x -= 180; //set out of the right bound.
+            [self.playerBtn setFrame:playerBtnFrame];
+            [self.playerBtn setHidden:NO];
+            
+            [UIView commitAnimations];
+            
+        }
         
     }
     
     
 }
 
+-(void)startRecording
+{
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    [session setActive:YES error:nil];
+    
+    [self.recorder record];
+    didRecord =YES;
+    [self.recorderBtn setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
+    [self.playerBtn setEnabled:NO];
+}
+
 -(void)playRecord
 {
+
+    
 
     self.player = [[AVAudioPlayer alloc] initWithContentsOfURL:self.recorder.url error:nil];
     NSLog(@"URL1:%@",self.recorder.url);
@@ -3111,6 +3183,18 @@ SystemSoundID soundObject;
 {
     [self.recorderBtn setEnabled:YES];
     
+}
+
+-(void)deleteRecorderVoice
+{
+    NSFileManager *fileManager =[NSFileManager defaultManager];
+    
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *voicePath =[[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"message%d.caf",recorderID]];
+    
+    NSError *error;
+    [fileManager removeItemAtPath:voicePath error:&error];
+    NSLog(@"error:%@",[error description]);
 }
 
 #pragma mark - recorder delegate

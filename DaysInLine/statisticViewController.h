@@ -16,7 +16,7 @@
 #import "GADBannerView.h"
 #import "globalVars.h"
 
-#define ADMOB_ID @"a1531ddc35a4db2"
+//#define ADMOB_ID @"a1531ddc35a4db2"
 
 
 @interface statisticViewController : UIViewController <ADBannerViewDelegate,GADBannerViewDelegate>

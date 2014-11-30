@@ -18,7 +18,7 @@
 #import "setMainTextDelegate.h"
 #import <StoreKit/SKStoreProductViewController.h>
 #import "CustomActionSheet.h"
-#define ADMOB_ID @"a1531ddc35a4db2"
+//#define ADMOB_ID @"a1531ddc35a4db2"
 
 @class homeView;
 @class daylineView;
